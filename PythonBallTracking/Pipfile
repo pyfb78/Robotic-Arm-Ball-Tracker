@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+tensorflow = "*"
+torch = "*"
+keras = "*"
+numpy = "*"
+cvzone = "*"
+numba = "*"
+opencv-python = "*"
+pillow = "*"
+scikit-image = "*"
+dip = "*"
+diplib = "*"
+matplotlib = "*"
+pyserial = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
+python_full_version = "3.8.16"
