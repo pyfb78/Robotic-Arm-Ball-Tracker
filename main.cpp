@@ -1,5 +1,5 @@
 /*
- * Title: uStepper ARM
+ * Title: Robotic ARM
  *
  * Author : Pavan Yeddanapudi
  *
@@ -16,8 +16,9 @@
  * This code gets the serial packet and performs the uStepper ARM movement.
  */
 #include <Arduino.h>
-#include <PWMServo.h>
+#include <Servo.h>
 #include "steppers.hpp"
+
 /*
  * This is serial port communication baudrate
  */
@@ -30,8 +31,8 @@
 #define ARM_RESET_POSITION        0x80  // Reset to starting position
 #define ARM_MAX_HEIGHT_POSITION   0x40  // Move steper 1 full height
 #define ARM_FULL_FORWARD_POSITION 0x20  // Move stepper 1 full forward
-#define ARM_OPEN_PWMSERVO         0x10  // Open the PWMServo completely
-#define ARM_CLOSE_PWMSERVO        0x08  // Close the PWMServo
+#define ARM_OPEN_SERVO_JAWS       0x10  // Open the Servo completely
+#define ARM_CLOSE_SERVO_JAWS      0x08  // Close the Servo
 #define ARM_ONLY_FLAG_VALID       0x04  // Use only flag value of Serial Packet
 #define ARM_NOCHECK_MOVE          0x02  // Move without hardware checks
 #define ARM_MOVE_ABSOLUTE         0x01  // Move absolute (default relative)
@@ -47,9 +48,10 @@ unsigned long   serial_packet_number;
 
 
 /*
- * PWMServo initialization.
+ * Servo initialization.
  */
-PWMServo handControl = PWMServo();
+Servo handControl;
+int servo_jaws_angle = 10;  // Initial angle
 
 /*
  * This function initalizes the default serial port on Teensy 4.1
@@ -61,7 +63,10 @@ sd_init(void)
 }
 
 
-
+/*
+ * Thsi function moves the arm to the position (x1, y1, z1) in the co-cordinate system with origin at
+ * (pos1, pos2, ps3)
+ */
 bool
 move_arm_absolute_position(long pos1, long pos2, long pos3, long x1, long y1, long z1)
 {
@@ -173,27 +178,56 @@ serial_read_packet(short *flag, long *n0, long *n1, long *n2, long *n3, long *n4
 }
 
 
+/*
+ * This function opens the jaws of the servo
+ * Rotates the servo to 180 degees
+ */
 void
-pwmservo_open_jaws()
-{
+servo_open_jaws()
+{ 
+  while (servo_jaws_angle < 180) {
+    handControl.write(servo_jaws_angle);
+    servo_jaws_angle++;      
+    delay(15);  
+  }
 }
 
 
+/*
+ * This function closes the jaws of the servo
+ */
 void
-pwmservo_close_jaws()
-{
+servo_close_jaws()
+{  
+  while (servo_jaws_angle > 10) {
+    handControl.write(servo_jaws_angle);
+    servo_jaws_angle--;     
+    delay(15);  
+  }
 }
 
 
-int   packet_num = 0;
+/*
+ * this is a simple test fuction to test the servo functionality
+ */
+void
+servo_test()
+{
+  while (1) {
+    servo_open_jaws();
+    servo_close_jaws();
+  }
+}
 
 
+/*
+ * Serial port packet debugging function
+ */
 void
 print_received_packet(short flag, long s1, long s2, long s3)
 {
-  packet_num++;
   Serial.print("<< New Packet ");
-  Serial.print(packet_num, DEC);
+  Serial.print(serial_packet_number, DEC);
   Serial.print(" [ ");
   Serial.print("flag=0x");
   Serial.print(flag, HEX);
@@ -208,8 +242,7 @@ print_received_packet(short flag, long s1, long s2, long s3)
 
 
 /*
- * This function takes the latest serial packet and performs the relative move on
- * the 3 steppers.
+ * This function proceses the serial port packets in a FIFO order
  */
 void
 serial_packet_steppers_processing()
@@ -229,9 +262,7 @@ serial_packet_steppers_processing()
   serial_read_packet(&flag, &s1, &s2, &s3, &s4, &s5, &s6);
 
   ++serial_packet_number;
-  //Serial.print("Pkt = ");
-  //Serial.println(serial_packet_number, DEC);
-
+  
   if (flag & ARM_RESET_POSITION) {
     reset_stepper1();
     reset_stepper3();
@@ -242,17 +273,15 @@ serial_packet_steppers_processing()
   }
 
 
-  if (flag & ARM_OPEN_PWMSERVO) {
-    pwmservo_open_jaws();
-    Serial.println("PWMServo Open");
-    print_received_packet(flag, s1, s2, s3);
+  if (flag & ARM_OPEN_SERVO_JAWS) {
+    servo_open_jaws();
+    Serial.println("Servo Jaws Open");
     return;
   }
 
-  if (flag & ARM_CLOSE_PWMSERVO) {
-    pwmservo_close_jaws();
-    Serial.println("PWMServo Close");
-    print_received_packet(flag, s1, s2, s3);
+  if (flag & ARM_CLOSE_SERVO_JAWS) {
+    servo_close_jaws();
+    Serial.println("Servo Jaws Close");
     return;
   }
 
@@ -280,6 +309,12 @@ void setup() {
    */
   sd_init();
 
+  /*
+   * Attach PWMServo. Note it is not tested in this code.
+   */
+  handControl.attach(servoPin);
+  handControl.write(servo_jaws_angle);
+
   setup_steppers();
 
   /*
@@ -290,11 +325,6 @@ void setup() {
   reset_stepper2();
 
   delay(1000); // Just add some delay can be decreased.
-
-  /*
-   * Attach PWMServo. Note it is not tested in this code.
-   */
-  handControl.attach(servoPin);
 
   serial_packet_number = 0;
 
@@ -309,12 +339,9 @@ void setup() {
  * during runtime in the mainloop.
  */
 void loop() {
-  
   /*
    * Now just call serial packet processing
    */
   serial_packet_steppers_processing();
-  //Serial.println("$$");
   Serial.flush();
 }
-
