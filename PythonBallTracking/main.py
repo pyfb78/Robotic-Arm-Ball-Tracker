@@ -1,4 +1,9 @@
 # Author: Pavan Yeddanapudi
+#
+# Ball tracker Python code
+# This code works independently.
+# It tracks the ball and moves the arm in that direction
+# This code runs on the laptop connected to the ARM camera
 
 from collections import deque
 import cv2
@@ -10,7 +15,7 @@ import serial.tools.list_ports
 import matplotlib.pyplot as plt
 
 
-# Teensy USB serial microcontroller program id data:
+# Teensy USB serial microcontroller program id data and baudrate
 VENDOR_ID = 5824
 PRODUCT_ID = 1155
 SERIAL_NUMBER = 14814510
@@ -18,11 +23,13 @@ SERIAL_BAUDRATE = 115200
 
 
 # Serial packet flag bits
+# These bits are sent as flags in the serial packet to 
+# Teensy board controling the ARM
 ARM_RESET_POSITION        = 0x80  # Reset to starting position
 ARM_MAX_HEIGHT_POSITION   = 0x40  # Move steper 1 full height
 ARM_FULL_FORWARD_POSITION = 0x20  # Move stepper 1 full forward
-ARM_OPEN_PWMSERVO         = 0x10  # Open the PWMServo completely
-ARM_CLOSE_PWMSERVO        = 0x08  # Close the PWMServo
+ARM_OPEN_SERVO_JAWS       = 0x10  # Open the Servo completely
+ARM_CLOSE_SERVO_JAWS      = 0x08  # Close the Servo
 ARM_ONLY_FLAG_VALID       = 0x04  # Use only flag value of Serial Packet
 ARM_NOCHECK_MOVE          = 0x02  # Move without hardware checks
 ARM_MOVE_ABSOLUTE         = 0x01  # Move absolute (default relative)
@@ -37,31 +44,46 @@ pic_frame_xcenter = (pic_frame_xrange / 2)
 pic_frame_ycenter = (pic_frame_yrange / 2)
 
 
+# The real diameter of the ball used for calculating the
+# distance based on the focal length of the camera
 real_ball_diameter = 40.0 # in mm
 
 
-
 # Steppers absolute position
+# This the co-ordinate system of the steppers in the Python code
+# the actual stepper postions in the hardware can be different
 stepper1_absolute_position = 0 # Right Stepper
 stepper2_absolute_position = 0 # Base Stepper
 stepper3_absolute_position = 0 # Left Stepper
 
+
+# This is used for delay to complete the previous ARM move
 arm_command_ready_time = 0.0     # Time when the next command can be sent
 
 
+# Serial packet number used for debugging
 serial_packet_number = 0
 
 
+#
+# The Teensy port node
+#
 def getTeensyPort():
     return '/dev/cu.usbmodem148145101'
 
 
+#
 # Initialize the serial port
+# We initialize the serial port first to send commands to the ARM
+#
 serial_port = getTeensyPort()
 serial_port_handle = serial.Serial(serial_port, SERIAL_BAUDRATE)
 serial_port_handle.flush()
 
 
+#
+# This function prints all the serial ports of the laptop
+#
 def printCOMPorts():
     for comport in serial.tools.list_ports.comports():
         vid = int(comport.vid)
@@ -71,18 +93,28 @@ def printCOMPorts():
     return
 
 
+#
+# this function flushes the data on serial port 'sph'
+#
 def serial_flush(sph):
     sph.flush()
     return
 
 
+#
+# this function increments the global serial packet number
+#
 def increment_and_serial_packet_number():
     global serial_packet_number
     serial_packet_number += 1
     print("Sent Packet = ", serial_packet_number)
 
 
-
+#
+# this function sends the packet to Teensy Robotic ARM
+# all packets are of same size
+# packet starts with a charecter '#' and ends with '$'
+#
 def serial_send_packet(sph, flag, n0, n1, n2, n3, n4, n5):
     sph.write(bytearray('#', 'ascii'))
     sph.write(flag.to_bytes(2, byteorder='little', signed=True))
@@ -96,30 +128,53 @@ def serial_send_packet(sph, flag, n0, n1, n2, n3, n4, n5):
     increment_and_serial_packet_number()
     #print("a = ", n0, ", b = ", n1, ", c = ", n2)
     #print("x1 = ", n3, ", y1 = ", n4, ", z1 = ", n5)
+    return
 
 
-
-def pwmservo_open_arms(sph):
-    flag = ARM_OPEN_PWMSERVO | ARM_ONLY_FLAG_VALID
+#
+# This functions sends a serial packet to open the servo jaws
+#
+def servo_open_jaws(sph):
+    flag = ARM_OPEN_SERVO_JAWS | ARM_ONLY_FLAG_VALID
     serial_send_packet(sph, flag, 0, 0, 0, 0, 0, 0)
+    time.sleep(3.0)
+    return
 
 
-def pwmservo_close_arms(sph):
-    flag = ARM_CLOSE_PWMSERVO | ARM_ONLY_FLAG_VALID
+#
+# This functions sends a serial packet to lose the servo jaws
+#
+def servo_close_jaws(sph):
+    flag = ARM_CLOSE_SERVO_JAWS| ARM_ONLY_FLAG_VALID
     serial_send_packet(sph, flag, 0, 0, 0, 0, 0, 0)
+    time.sleep(3.0)
+    return
 
 
+#
+# this function moves the ARM to (r, b, l) position assuming the origin is at
+# (p1, p2, p3). Both the oigin and the destination are send as a packet on the serial port
+#
 def arm_move_absolute(sph, p1, p2, p3, r, b, l):
     flag = ARM_MOVE_ABSOLUTE
     serial_send_packet(sph, flag, p1, p2, p3, r, b, l)
+    return
 
 
+#
+# this function moves the ARM to (r, b, l) position assuming the origin is at
+# (p1, p2, p3). Both the oigin and the destination are send as a packet on the serial port
+# an extra flag is set to inform the ARM not to check the safety conditions
+#
 def arm_move_nocheck_absolute(sph, p1, p2, p3, r, b, l):
     flag = ARM_NOCHECK_MOVE | ARM_MOVE_ABSOLUTE
     serial_send_packet(sph, flag, p1, p2, p3, r, b, l)
+    return
 
 
-# Update ARM absolute position
+#
+# Update ARM absolute position after the move
+#
 def update_absolute_move_position(abs_s1, abs_s2, abs_s3):
     global stepper1_absolute_position
     global stepper2_absolute_position
@@ -127,6 +182,7 @@ def update_absolute_move_position(abs_s1, abs_s2, abs_s3):
     stepper1_absolute_position = abs_s1 # Right Stepper
     stepper2_absolute_position = abs_s2 # Base Stepper
     stepper3_absolute_position = abs_s3 # Left Stepper
+    return
 
 
 
@@ -137,7 +193,8 @@ def move_steppers_to_pic_center(sph, dis, xfac, yfac):
     global stepper1_absolute_position
     global stepper2_absolute_position
     global stepper3_absolute_position
-
+    
+    # these constant values are calculated based on the hardware
     stepper1_factor = 700000.0 / dis
     stepper2_factor = 700000.0 / dis
     stepper3_factor = 1000000.0 / dis
@@ -147,9 +204,10 @@ def move_steppers_to_pic_center(sph, dis, xfac, yfac):
     b = stepper2_absolute_position + int(xsteps)
     l = stepper3_absolute_position + int(ysteps)
 
+    # Send the origin and the final position to the ARM
     arm_move_absolute(sph, stepper1_absolute_position, stepper2_absolute_position, stepper3_absolute_position, r, b, l)
-    time.sleep(abs((max(xsteps, ysteps)))/500.0)
-    update_absolute_move_position(r, b, l)
+    time.sleep(abs((max(xsteps, ysteps)))/500.0) # delay so that the move completes
+    update_absolute_move_position(r, b, l) # update the latest postion of the ARM
     return
 
 
@@ -160,7 +218,8 @@ def move_steppers_to_pic_center_pix(sph, dis, xpix, ypix):
     global stepper1_absolute_position
     global stepper2_absolute_position
     global stepper3_absolute_position
-
+    
+    # these constant values are calculated based on the hardware
     stepper1_factor = 700000.0 / dis
     stepper2_factor = 700000.0 / dis
     stepper3_factor = 1000000.0 / dis
@@ -171,38 +230,41 @@ def move_steppers_to_pic_center_pix(sph, dis, xpix, ypix):
     l = stepper3_absolute_position + int(ysteps)
 
     print("stepper2_absolute_position = ", stepper2_absolute_position)
-    if (b < 0):
+    if (b < 0): 
         print("LEFT = ", b)
     else:
         print("RIGHT = ", b)
 
+    # Send the origin and the final position to the ARM
     arm_move_absolute(sph, stepper1_absolute_position, stepper2_absolute_position, stepper3_absolute_position, r, b, l)
-    time.sleep(abs((max(xsteps, ysteps)))/1000.0)
-    update_absolute_move_position(r, b, l)
+    arm_move_absolute(sph, stepper1_absolute_position, stepper2_absolute_position, stepper3_absolute_position, r, b, l)
+    time.sleep(abs((max(xsteps, ysteps)))/1000.0) # delay so that the move completes
+    update_absolute_move_position(r, b, l) # update the latest postion of the ARM
     return
 
 
+#
 # Returns the distance in mm
 # This cde uses focal length
+#
 def calculate_distance(pixel_diameter, focal_length_mm, real_diameter):
-    """
-    Calculate the distance to an object using the formula: distance = (real_diameter * focal_length_mm) / pixel_diameter
-    :param pixel_diameter: Diameter of the object in pixels
-    :param focal_length_mm: Focal length of the camera in millimeters
-    :param real_diameter: Actual diameter of the object in millimeters
-    :return: Distance to the object in millimeters
-    """
+    # Calculate the distance to an object using the formula: distance = (real_diameter * focal_length_mm) / pixel_diameter
+    # :param pixel_diameter: Diameter of the object in pixels
+    # :param focal_length_mm: Focal length of the camera in millimeters
+    # :param real_diameter: Actual diameter of the object in millimeters
+    # :return: Distance to the object in millimeters
     return round((real_diameter * focal_length_mm) / pixel_diameter, 6)
 
 
+#
+# Returns the potential ball contours in the picture frame
+#
 def filter_contours(contours, min_area, circularity_threshold):
-    """
-    Filter contours based on area and circularity
-    :param contours: List of contours to filter
-    :param min_area: Minimum area threshold
-    :param circularity_threshold: Circularity threshold
-    :return: Filtered contours
-    """
+    # Filter contours based on area and circularity
+    # :param contours: List of contours to filter
+    # :param min_area: Minimum area threshold
+    # :param circularity_threshold: Circularity threshold
+    # :return: Filtered contours
     filtered_contours = []
     for contour in contours:
         # Calculate contour area
@@ -216,6 +278,9 @@ def filter_contours(contours, min_area, circularity_threshold):
     return filtered_contours
 
 
+#
+# This is the main function of ball tracking python code
+#
 def main():
     global real_ball_diameter
     global stepper1_absolute_position
@@ -235,25 +300,13 @@ def main():
 
     print("Teensy Serial Port = ", serial_port)
 
-    #green_lower = np.array([50, 97, 0])
-    #green_upper = np.array([84, 255, 255])
-
-    green_lower = (40, 40, 40)
-    green_upper = (90, 255, 255)
-
-
-    color_lower = green_lower
-    color_upper = green_upper
-
     # Create a VideoCapture object for the camera
-    # Note camera 1 is the builtin camera of the laptop
     cap = cv2.VideoCapture(0)
 
     ball_active_time = time.time()
 
     while_cnt = 0
     # Start capturing the frames to track the ball
-
 
     while True:
 
@@ -280,6 +333,7 @@ def main():
 
         # orange_lower = np.array([0, 100, 100])
         # orange_upper = np.array([30, 255, 255])
+        # Values for identifying a green ball
         green_lower = np.array((40, 40, 40))
         green_upper = np.array((90, 255, 255))
 
@@ -341,6 +395,8 @@ def main():
                 #y_factor = y_pix_delta / pic_frame_yrange
 
                 #move_steppers_to_pic_center(serial_port_handle, distance, x_factor, y_factor)
+
+                # Move the ARM to the correct postion based on the frame
                 move_steppers_to_pic_center_pix(serial_port_handle, distance, x_pix_delta, y_pix_delta)
 
             # Display the frame
@@ -363,3 +419,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
