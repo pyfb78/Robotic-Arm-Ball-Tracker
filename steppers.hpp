@@ -54,27 +54,27 @@
 /*
  * Resset or zero position switch of steppers
  */
-#define STEPPER1_RESET_TOP_PIN		35
-#define STEPPER2_RESET_PIN			34
-#define STEPPER3_RESET_TOP_PIN		36
-#define STEPPER3_RESET_BOTTOM_PIN	40
-#define STEPPER3_ENABLE_PIN			37
-#define STEPPER2_ENABLE_PIN			38
-#define STEPPER1_ENABLE_PIN			39
-#define STEPPER1_RESET_BOTTOM_PIN	33
+#define STEPPER1_RESET_TOP_PIN		    35
+#define STEPPER2_RESET_PIN            34
+#define STEPPER3_RESET_TOP_PIN		    36
+#define STEPPER3_RESET_BOTTOM_PIN	    40
+#define STEPPER3_ENABLE_PIN			      37
+#define STEPPER2_ENABLE_PIN			      38
+#define STEPPER1_ENABLE_PIN			      39
+#define STEPPER1_RESET_BOTTOM_PIN	    33
 
 
-#define STEPPER_ENABLE				HIGH
-#define STEPPER_DISABLE				LOW
+#define STEPPER_ENABLE				      HIGH
+#define STEPPER_DISABLE				      LOW
 
 
 /*
  * RESET and max positions
  */
-#define STEPPER1_RESET_POSITION		0
-#define STEPPER2_RESET_POSITION		0
-#define STEPPER2_MAX_POSITION		  3500
-#define STEPPER3_RESET_POSITION		0
+#define STEPPER1_RESET_POSITION		  0
+#define STEPPER2_RESET_POSITION		  0
+#define STEPPER2_MAX_POSITION		    3500
+#define STEPPER3_RESET_POSITION		  0
 
 
 #define	STEPPER3_STEPPER1_SAFETY_GAP_STEPS	1000
@@ -85,13 +85,13 @@
 /*
  * Direction of movement
  */
-#define STEPPER1_MOVE_FORWARD	LOW
+#define STEPPER1_MOVE_FORWARD	  LOW
 #define STEPPER1_MOVE_BACKWARD	HIGH
 
 #define STEPPER2_MOVE_RIGHT		HIGH
 #define STEPPER2_MOVE_LEFT		LOW
 
-#define STEPPER3_MOVE_FORWARD	HIGH
+#define STEPPER3_MOVE_FORWARD	  HIGH
 #define STEPPER3_MOVE_BACKWARD	LOW
 
 #define STEPPER1_SAFE_RESET_MOVE_CNT	1000
@@ -152,4 +152,3 @@ extern void slipping_check_steppers();
 extern void test_all_movement();
 
 #endif // _STEPPERS_H_
-
