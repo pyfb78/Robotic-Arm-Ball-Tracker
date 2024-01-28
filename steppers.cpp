@@ -3,15 +3,24 @@
  *
  *  Author: Pavan Yeddanapudi
  *
- *  Description: Decided to write my own stepper code rather than use the AccelStepper library.
+ *  Description: Decided to write my own stepper code rather than using AccelStepper library.
+ *               As  there many specific issues which need to handled by my ARM with reset
+ *               switches and hence decided to write a constant speed movement stepper functions.
  */
 
 #include "steppers.hpp"
 
+/*
+ * Position of the stepper motors
+ */
 long	stepper1_position = -1;
 long	stepper2_position = -1;
 long	stepper3_position = -1;
 
+
+/*
+ * Teensy hardware reset pin assignments
+ */
 int	s1_reset_top 		= STEPPER1_RESET_TOP_PIN;
 int	s1_reset_bottom 	= STEPPER1_RESET_BOTTOM_PIN;
 int	s2_reset 			= STEPPER2_RESET_PIN;
@@ -22,6 +31,9 @@ int	s3_reset_bottom 	= STEPPER3_RESET_BOTTOM_PIN;
 long cpu_wasting_time = 0;
 
 
+/*
+ * Microsecond delay function
+ */
 void
 delay_microseconds(unsigned long ms)
 {
@@ -33,6 +45,9 @@ delay_microseconds(unsigned long ms)
 }
 
 
+/*
+ * This function setsup the hardware configuration os steppers
+ */
 void
 setup_steppers()
 {
@@ -64,6 +79,9 @@ setup_steppers()
 }
 
 
+/*
+ * This function returns the position of stepper1
+ */
 long
 get_stepper1_position()
 {
@@ -71,6 +89,9 @@ get_stepper1_position()
 }
 
 
+/*
+ * This function returns the position of stepper2
+ */
 long
 get_stepper2_position()
 {
@@ -78,6 +99,9 @@ get_stepper2_position()
 }
 
 
+/*
+ * This function returns the position of stepper3
+ */
 long
 get_stepper3_position()
 {
@@ -85,6 +109,10 @@ get_stepper3_position()
 }
 
 
+/*
+ * This function returns the move direction for stepper 1
+ * based the delta or the move value.
+ */
 int
 get_stepper1_move_direction(long delta)
 {
@@ -99,6 +127,10 @@ get_stepper1_move_direction(long delta)
 }
 
 
+/*
+ * This function returns the move direction for stepper 2
+ * based the delta or the move value.
+ */
 int
 get_stepper2_move_direction(long delta)
 {
@@ -113,6 +145,10 @@ get_stepper2_move_direction(long delta)
 }
 
 
+/*
+ * This function returns the move direction for stepper 3
+ * based the delta or the move value.
+ */
 int
 get_stepper3_move_direction(long delta)
 {
@@ -127,6 +163,9 @@ get_stepper3_move_direction(long delta)
 }
 
 
+/*
+ * This function returns the increment or decrement step based on direction for stepper 1
+ */
 int
 get_stepper1_direction_step(int dir)
 {
@@ -140,6 +179,9 @@ get_stepper1_direction_step(int dir)
 }
 
 
+/*
+ * This function returns the increment or decrement step based on direction for stepper 2
+ */
 int
 get_stepper2_direction_step(int dir)
 {
@@ -153,6 +195,9 @@ get_stepper2_direction_step(int dir)
 }
 
 
+/*
+ * This function returns the increment or decrement step based on direction for stepper 3
+ */
 int
 get_stepper3_direction_step(int dir)
 {
@@ -166,6 +211,9 @@ get_stepper3_direction_step(int dir)
 }
 
 
+/*
+ * This function makes sure the stepper 2 motion is in the range for safety
+ */
 bool
 is_stepper2_position_safe(long delta)
 {
@@ -178,6 +226,9 @@ is_stepper2_position_safe(long delta)
 }
 
 
+/*
+ * This function makes sure the stepper 2 next postion is in the range for safety
+ */
 bool
 is_absolute_stepper2_position_safe(long pos)
 {
@@ -188,6 +239,10 @@ is_absolute_stepper2_position_safe(long pos)
 }
 
 
+/*
+ * Stepper1 prrogramming for moving the stepper by one step in the given
+ * direction.
+ */
 void
 just_step_stepper1(int dir)
 {
@@ -201,6 +256,9 @@ just_step_stepper1(int dir)
 }
 
 
+/*
+ * Slowly move the stepper3 to keep the safety gap with stepper1
+ */
 void
 slow_limit_check_stepper3_for_stepper1()
 {
@@ -212,6 +270,9 @@ slow_limit_check_stepper3_for_stepper1()
 }
 
 
+/*
+ * With medium speed move the stepper3 to keep the safety gap with stepper1
+ */
 void
 medium_limit_check_stepper3_for_stepper1()
 {
@@ -223,6 +284,9 @@ medium_limit_check_stepper3_for_stepper1()
 }
 
 
+/*
+ * With high speed move the stepper3 to keep the safety gap with stepper1
+ */
 void
 fast_limit_check_stepper3_for_stepper1()
 {
@@ -234,6 +298,10 @@ fast_limit_check_stepper3_for_stepper1()
 }
 
 
+/*
+ * With slow speed move the stepper1 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 slow_step_stepper1(int dir, bool dflag)
 {
@@ -268,6 +336,10 @@ slow_step_stepper1(int dir, bool dflag)
 }
 
 
+/*
+ * With medium speed move the stepper1 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 medium_step_stepper1(int dir, bool dflag)
 {
@@ -302,6 +374,10 @@ medium_step_stepper1(int dir, bool dflag)
 }
 
 
+/*
+ * With high speed move the stepper1 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 fast_step_stepper1(int dir, bool dflag)
 {
@@ -336,6 +412,11 @@ fast_step_stepper1(int dir, bool dflag)
 }
 
 
+
+/*
+ * Stepper2 prrogramming for moving the stepper by one step in the given
+ * direction.
+ */
 void
 just_step_stepper2(int dir)
 {
@@ -349,6 +430,10 @@ just_step_stepper2(int dir)
 }
 
 
+/*
+ * With slow speed move the stepper2 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 slow_step_stepper2(int dir, bool dflag)
 {
@@ -384,6 +469,10 @@ slow_step_stepper2(int dir, bool dflag)
 }
 
 
+/*
+ * With medium speed move the stepper1 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 medium_step_stepper2(int dir, bool dflag)
 {
@@ -419,6 +508,10 @@ medium_step_stepper2(int dir, bool dflag)
 }
 
 
+/*
+ * With high speed move the stepper1 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 fast_step_stepper2(int dir, bool dflag)
 {
@@ -454,6 +547,10 @@ fast_step_stepper2(int dir, bool dflag)
 }
 
 
+/*
+ * Stepper3 prrogramming for moving the stepper by one step in the given
+ * direction.
+ */
 void
 just_step_stepper3(int dir)
 {
@@ -467,6 +564,10 @@ just_step_stepper3(int dir)
 }
 
 
+/*
+ * With slow speed move the stepper3 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 slow_step_stepper3(int dir, bool dflag)
 {
@@ -501,6 +602,10 @@ slow_step_stepper3(int dir, bool dflag)
 }
 
 
+/*
+ * With medium speed move the stepper3 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 medium_step_stepper3(int dir, bool dflag)
 {
@@ -535,6 +640,10 @@ medium_step_stepper3(int dir, bool dflag)
 }
 
 
+/*
+ * With high speed move the stepper3 by one step
+ * dflag can be used to delay till the step is complete.
+ */
 unsigned long
 fast_step_stepper3(int dir, bool dflag)
 {
@@ -570,6 +679,7 @@ fast_step_stepper3(int dir, bool dflag)
 
 
 /*
+ * Moves all 3 steppers slowly by a step. If dir is -1 it will not move that stepper.
  * Returns the microseconds delay needed to complete the operation
  */
 unsigned long
@@ -601,6 +711,7 @@ slow_step_all(int dir1, int dir2, int dir3)
 
 
 /*
+ * Moves all 3 steppers with medium speed by a step. If dir is -1 it will not move that stepper.
  * Returns the microseconds delay needed to complete the operation
  */
 unsigned long
@@ -632,37 +743,7 @@ medium_step_all(int dir1, int dir2, int dir3)
 
 
 /*
- * Returns the microseconds delay needed to complete the operation
- */
-unsigned long
-fast_step_all_old(int dir1, int dir2, int dir3)
-{
-	unsigned long d = 0;
-	unsigned long dtemp;
-
-	if (dir1 != -1) {
-		d = fast_step_stepper1(dir1, true);
-	}
-
-	if (dir2 != -1) {
-		dtemp = fast_step_stepper2(dir2, true);
-		if (dtemp > d) {
-			d = dtemp;
-		}
-	}
-
-	if (dir3 != -1) {
-		dtemp = fast_step_stepper3(dir3, true);
-		if (dtemp > d) {
-			d = dtemp;
-		}
-	}
-
-	return d;
-}
-
-
-/*
+ * Moves all 3 steppers with high speed by a step. If dir is -1 it will not move that stepper.
  * Returns the microseconds delay needed to complete the operation
  */
 unsigned long
@@ -684,7 +765,9 @@ fast_step_all(int dir1, int dir2, int dir3)
 }
 
 
-
+/*
+ * This function moves all the 3 steppers to reset position
+ */
 void
 slipping_check_steppers()
 {
@@ -700,6 +783,9 @@ slipping_check_steppers()
 }
 
 
+/*
+ * Test code to test steppers movement
+ */
 void
 test_all_movement()
 {
@@ -747,6 +833,9 @@ test_all_movement()
 }
 
 
+/*
+ * Test code to test reset switches
+ */
 void
 test_reset_switches()
 {
@@ -781,6 +870,9 @@ test_reset_switches()
 }
 
 
+/*
+ * Test code to test stepper1
+ */
 void
 test_stepper1_movement()
 {
@@ -806,6 +898,9 @@ test_stepper1_movement()
 }
 
 
+/*
+ * Test code to test stepper3
+ */
 void
 test_stepper3_movement()
 {
@@ -836,6 +931,10 @@ test_stepper3_movement()
 }
 
 
+/*
+ * Stepper1 reset code
+ * Moves the stepper to reset position with respect to the reset switches
+ */
 void
 reset_stepper1()
 {
@@ -868,6 +967,10 @@ reset_stepper1()
 }
 
 
+/*
+ * Stepper3 reset code
+ * Moves the stepper to reset position with respect to the reset switches
+ */
 void
 reset_stepper3()
 {
@@ -897,6 +1000,10 @@ reset_stepper3()
 }
 
 
+/*
+ * Stepper2 reset code
+ * Moves the stepper to reset position with respect to the reset switches
+ */
 void
 reset_stepper2()
 {
@@ -926,4 +1033,3 @@ reset_stepper2()
 
 	Serial.println("Resetting Stepper 2 Complete");
 }
-
